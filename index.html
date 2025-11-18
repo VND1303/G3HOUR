@@ -200,7 +200,11 @@
         async function startApp() {
             try {
                 permissionStatus.textContent = "Revisando HTTPS...";
-                if (location.protocol !== 'https://') {
+                
+                // --- INICIO DE LA CORRECCIÓN ---
+                // El protocolo es 'https:' (con dos puntos), no 'https://'
+                if (location.protocol !== 'https:') {
+                // --- FIN DE LA CORRECCIÓN ---
                     permissionStatus.textContent = "Error: Esta app debe estar en HTTPS.";
                     return;
                 }
