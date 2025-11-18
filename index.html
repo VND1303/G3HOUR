@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente de Hora Dorada</title>
+    <title>Golden Hour App v2.0</title>
     <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Carga de SunCalc.js (para calcular la posición del sol) -->
@@ -11,60 +11,114 @@
     <!-- Fuente Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #000;
+            background-color: #111827; /* bg-gray-900 */
             color: #f3f4f6;
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
+            overflow-x: hidden;
         }
-
-        /* Contenedor principal de la app */
-        #app-screen {
+        
+        /* Estilos de las pantallas */
+        .screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            overflow: hidden;
-            display: flex; 
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            transition: opacity 0.3s ease;
+        }
+        .hidden {
+            display: none;
+            opacity: 0;
         }
 
-        /* Feed de la cámara en vivo (fondo) */
+        /* --- Estilos de la Calculadora --- */
+        #calculator-screen {
+            background-color: #111827; /* bg-gray-900 */
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        
+        /* Tarjetas de información */
+        .info-card {
+            background-color: #1f2937; /* bg-gray-800 */
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+        }
+        .info-card svg {
+            flex-shrink: 0;
+            margin-right: 1rem;
+        }
+        .info-card h3 {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #9ca3af; /* text-gray-400 */
+            text-transform: uppercase;
+        }
+        .info-card .time {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.2;
+        }
+        .info-card .detail {
+            font-size: 0.9rem;
+            color: #d1d5db; /* text-gray-300 */
+        }
+        
+        /* Colores de las tarjetas */
+        .card-sunrise { background-color: #362923; color: #fdba74; } /* orange-200 */
+        .card-sunset { background-color: #3b2b3a; color: #f0abfc; } /* fuchsia-200 */
+        .card-solar-noon { background-color: #3a3222; color: #fde047; } /* yellow-200 */
+        .card-golden-hour { background-color: #3a3123; color: #fcd34d; } /* amber-200 */
+        .card-blue-hour { background-color: #213243; color: #93c5fd; } /* blue-200 */
+
+        /* Línea de tiempo */
+        #timeline {
+            display: flex;
+            width: 100%;
+            height: 2.5rem; /* 40px */
+            border-radius: 99px;
+            overflow: hidden;
+            background-color: #1f2937;
+            border: 2px solid #374151;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #111827;
+        }
+        .timeline-segment {
+            display: grid;
+            place-items: center;
+            height: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        
+        /* --- Estilos de la Cámara AR --- */
+        #ar-screen {
+            background-color: #000;
+        }
         #camera-feed {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            width: auto;
-            height: auto;
-            min-width: 100%;
-            min-height: 100%;
+            top: 50%; left: 50%;
+            width: auto; height: auto;
+            min-width: 100%; min-height: 100%;
             transform: translate(-50%, -50%);
             z-index: 10;
         }
-
-        /* Capa de Realidad Aumentada (AR) */
         #ar-overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 20;
-            overflow: hidden; /* Clave para que el sol desaparezca por los lados */
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 20; overflow: hidden;
         }
-        
-        /* Marcador del Sol (El círculo) */
         #sun-marker {
-            width: 60px;
-            height: 60px;
-            background-color: rgba(251, 191, 36, 0.7); /* yellow-400 con transparencia */
+            width: 60px; height: 60px;
+            background-color: rgba(251, 191, 36, 0.7);
             border: 4px solid rgba(255, 255, 255, 0.8);
             border-radius: 50%;
             position: absolute;
@@ -72,308 +126,438 @@
             font-size: 30px;
             display: grid;
             place-items: center;
-            /* Transición suave para la altitud */
             transition: bottom 0.5s linear;
-            /* El transform (horizontal) se aplica con JS */
         }
-
-        /* Panel de Estadísticas (Abajo) */
-        #stats-bar {
+        #debug-info {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: rgba(17, 24, 39, 0.8); /* bg-gray-900 con 80% opacidad */
-            padding: 1rem;
-            z-index: 40;
-            backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(55, 65, 81, 0.5);
+            bottom: 20px; left: 20px;
+            z-index: 50;
+            color: white;
+            font-family: monospace;
+            background-color: rgba(0,0,0,0.5);
+            padding: 5px;
+            border-radius: 5px;
+        }
+        #btn-close-ar {
+            position: absolute;
+            top: 1.5rem; left: 1.5rem;
+            z-index: 50;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 99px;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            backdrop-filter: blur(5px);
         }
         
-        .stat-item {
-            flex: 1;
-            text-align: center;
-        }
-        .stat-title {
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: #9ca3af; /* text-gray-400 */
-            text-transform: uppercase;
-        }
-        .stat-value {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #ffffff;
-            line-height: 1.2;
-        }
-
-        /* Pantalla de Inicio (Permisos) */
-        #start-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 100;
-            background-color: #111827;
-            display: grid; /* Esta sí usa grid */
-            place-items: center;
-            text-align: center;
-            padding: 1rem;
-        }
-        
-        .hidden {
-            display: none;
-        }
     </style>
 </head>
 <body>
 
-    <!-- PANTALLA 1: INICIO Y PERMISOS -->
-    <div id="start-screen">
-        <div class="max-w-md">
-            <h1 class="text-3xl font-bold text-white mb-4">Asistente de Hora Dorada v1.6</h1>
-            <p class="text-gray-300 mb-6">
-                Esta app necesita acceso a tu Cámara, Ubicación y Sensores de Movimiento para funcionar.
-            </p>
-            <!-- ADVERTENCIA HTTPS -->
-            <div class="bg-yellow-800 border-l-4 border-yellow-300 text-yellow-100 p-4 rounded-lg shadow-lg mb-6">
-                <strong class="font-bold">¡IMPORTANTE!</strong>
-                <p>Esta app debe ejecutarse en un servidor seguro (HTTPS). No funcionará como un archivo local.</p>
+    <!-- PANTALLA 1: CARGA INICIAL Y PERMISO DE GPS -->
+    <div id="loading-screen" class="screen" style="display: grid; place-items: center; text-align: center; background-color: #111827; z-index: 200; padding: 1rem;">
+        <div>
+            <h1 class="text-3xl font-bold text-white mb-4">Golden Hour App</h1>
+            <p id="loading-status" class="text-xl text-yellow-400">Detectando tu ubicación (GPS)...</p>
+            <!-- Fallback por si el GPS falla -->
+            <div id="manual-search" class="hidden mt-6">
+                <p class="text-red-400 mb-2">No se pudo obtener la ubicación.</p>
+                <label for="location-search" class="text-gray-300">Buscar ubicación manualmente:</label>
+                <input type="text" id="location-search" placeholder="Ej: Tepic, México" class="w-full mt-2 p-2 rounded bg-gray-700 text-white">
+                <button id="search-button" class="w-full mt-2 p-2 bg-blue-600 rounded">Buscar</button>
             </div>
-            <button id="start-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 text-xl">
-                Activar Sensores
-            </button>
-            <p id="permission-status" class="text-gray-400 mt-4 h-6"></p>
         </div>
     </div>
 
-    <!-- PANTALLA 2: APLICACIÓN PRINCIPAL -->
-    <!-- Por defecto está oculta con .hidden -->
-    <div id="app-screen" class="hidden">
-        <!-- Fondo de Cámara -->
-        <video id="camera-feed" playsinline autoplay muted loop></video>
-
-        <!-- Capa de AR -->
-        <div id="ar-overlay">
-            <div id="sun-marker">☀️</div>
+    <!-- PANTALLA 2: APLICACIÓN PRINCIPAL (CALCULADORA + AR) -->
+    <div id="main-app" class="hidden">
+        
+        <!-- PANTALLA DE CALCULADORA -->
+        <div id="calculator-screen" class="screen" style="position: relative;">
+            <div class="max-w-2xl mx-auto space-y-6">
+                
+                <!-- Encabezado -->
+                <header class="text-center space-y-2 pt-6">
+                    <h1 class="text-4xl font-extrabold text-white">Golden Hour</h1>
+                    <p id="location-name" class="text-xl font-medium text-blue-300">Tepic, México</p>
+                    <p id="current-date" class="text-lg text-gray-400">Lunes, 17 de Noviembre de 2025</p>
+                </header>
+                
+                <!-- Botón para modo AR -->
+                <button id="btn-open-ar" class="w-full py-3 px-6 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-lg shadow-md transition duration-300 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="mr-2" viewBox="0 0 16 16">
+                      <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 1.625.86 3.027 2.14 3.72A4 4 0 0 0 8 14a4 4 0 0 0 1.86-3.28A4.002 4.002 0 0 0 12 6c0-1.625-.86-3.027-2.14-3.72L8 1.917zM14.61 5.57A.5.5 0 0 1 14 6h-1a.5.5 0 0 1 0-1h1a.5.5 0 0 1 .61.43zM2 6a.5.5 0 0 1-.61-.43A.5.5 0 0 1 2 5h1a.5.5 0 0 1 0 1H2zm13 4a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 1 .5-.5zM1 10a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 1 .5-.5zM8 0a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1A.5.5 0 0 1 8 0z"/>
+                    </svg>
+                    Modo Brújula AR (Mostrar Sol)
+                </button>
+                
+                <!-- Línea de Tiempo -->
+                <section>
+                    <h2 class="text-xl font-bold text-white mb-3">Línea de Tiempo del Día</h2>
+                    <div id="timeline">
+                        <!-- Se genera con JS -->
+                    </div>
+                </section>
+                
+                <!-- Información Detallada -->
+                <section>
+                    <h2 class="text-xl font-bold text-white mb-3">Información Detallada</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Amanecer -->
+                        <div class="info-card card-sunrise">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            <div>
+                                <h3>Amanecer</h3>
+                                <p id="sunrise-time" class="time">06:12</p>
+                                <p id="sunrise-day" class="detail">Domingo</p>
+                            </div>
+                        </div>
+                        <!-- Atardecer -->
+                        <div class="info-card card-sunset">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            <div>
+                                <h3>Atardecer</h3>
+                                <p id="sunset-time" class="time">17:18</p>
+                                <p id="sunset-day" class="detail">Domingo</p>
+                            </div>
+                        </div>
+                        <!-- Golden Hour Matutina -->
+                        <div class="info-card card-golden-hour">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            <div>
+                                <h3>Golden Hour Matutina</h3>
+                                <p id="gh-morn-time" class="time">06:12 - 06:15</p>
+                                <p id="gh-morn-duration" class="detail">2 min</p>
+                            </div>
+                        </div>
+                        <!-- Golden Hour Vespertina -->
+                        <div class="info-card card-golden-hour">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            <div>
+                                <h3>Golden Hour Vespertina</h3>
+                                <p id="gh-eve-time" class="time">17:15 - 17:18</p>
+                                <p id="gh-eve-duration" class="detail">2 min</p>
+                            </div>
+                        </div>
+                        <!-- Blue Hour -->
+                        <div class="info-card card-blue-hour">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                            <div>
+                                <h3>Blue Hour</h3>
+                                <p id="bh-time" class="time">Mañana & Tarde</p>
+                                <p id="bh-detail" class="detail">05:49 & 17:18</p>
+                            </div>
+                        </div>
+                        <!-- Mediodía Solar -->
+                        <div class="info-card card-solar-noon">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div>
+                                <h3>Mediodía Solar</h3>
+                                <p id="solar-noon-time" class="time">11:45</p>
+                                <p class="detail">Punto más alto del sol</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Consejos de Fotografía -->
+                <section class="pb-12">
+                    <h2 class="text-xl font-bold text-white mb-3">Consejos de Fotografía</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="info-card"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            <div><h3>Configuración Recomendada</h3><p class="detail">Usa ISO bajo (100-400), apertura f/5.6-f/11, y balance de blancos 'nublado'.</p></div></div>
+                        <div class="info-card"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M4 13H3v-2h1v2zm17 0h-1v-2h1v2zM12 5a1 1 0 100-2 1 1 0 000 2zM5.636 19.364A9 9 0 1018.364 5.636 9 9 0 005.636 19.364z"></path></svg>
+                            <div><h3>Mejor Momento</h3><p class="detail">Planifica 15-20 minutos antes. Los primeros y últimos 10 minutos ofrecen la luz más dramática.</p></div></div>
+                    </div>
+                </section>
+                
+            </div>
         </div>
 
-        <!-- Panel de Estadísticas -->
-        <div id="stats-bar">
-            <div class="flex gap-2">
-                <div class="stat-item">
-                    <div class="stat-title">Luz Actual</div>
-                    <div id="lux-display" class="stat-value text-yellow-400">--- Lux</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-title">Hora Dorada</div>
-                    <div id="golden-hour-display" class="stat-value text-orange-400">--:--</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-title">Atardecer</div>
-                    <div id="sunset-display" class="stat-value text-red-400">--:--</div>
-                </div>
+        <!-- PANTALLA DE CÁMARA AR -->
+        <div id="ar-screen" class="screen hidden" style="background-color: #000;">
+            <video id="camera-feed" playsinline autoplay muted loop></video>
+            <div id="ar-overlay">
+                <div id="sun-marker">☀️</div>
             </div>
-            <!-- Div de depuración (opcional) -->
-            <div id="debug-info" class="text-xs text-gray-600 mt-2 text-center"></div>
+            <button id="btn-close-ar">← Volver</button>
+            <div id="debug-info">Activando brújula...</div>
         </div>
     </div>
 
     <script>
         // --- Referencias DOM ---
-        const startScreen = document.getElementById('start-screen');
-        const startButton = document.getElementById('start-button');
-        const permissionStatus = document.getElementById('permission-status');
+        const loadingScreen = document.getElementById('loading-screen');
+        const loadingStatus = document.getElementById('loading-status');
+        const mainApp = document.getElementById('main-app');
         
-        const appScreen = document.getElementById('app-screen');
+        const calculatorScreen = document.getElementById('calculator-screen');
+        const locationName = document.getElementById('location-name');
+        const currentDate = document.getElementById('current-date');
+        const timeline = document.getElementById('timeline');
+        const btnOpenAr = document.getElementById('btn-open-ar');
+        
+        const arScreen = document.getElementById('ar-screen');
         const cameraFeed = document.getElementById('camera-feed');
         const sunMarker = document.getElementById('sun-marker');
-        
-        const luxDisplay = document.getElementById('lux-display');
-        const goldenHourDisplay = document.getElementById('golden-hour-display');
-        const sunsetDisplay = document.getElementById('sunset-display');
+        const btnCloseAr = document.getElementById('btn-close-ar');
         const debugInfo = document.getElementById('debug-info');
 
         // --- Estado Global ---
         let currentPosition = { lat: 0, lon: 0 };
-        let sunCalcData = {};
+        let cameraStream = null;
 
-        // --- 1. Botón de Inicio ---
-        startButton.addEventListener('click', startApp);
+        // --- MOCK DATE (Para coincidir con las capturas de pantalla) ---
+        // Usamos esta fecha fija para que los cálculos coincidan con tus imágenes.
+        // Para usar la fecha real, reemplaza esto con: const MOCK_DATE = new Date();
+        const MOCK_DATE = new Date('2025-11-17T12:00:00');
+        
+        // --- Formateadores ---
+        const formatTime = (date) => date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        const formatDay = (date) => date.toLocaleDateString('es-ES', { weekday: 'long' });
+        const formatDate = (date) => date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        // --- 1. INICIO DE LA APP ---
+        window.addEventListener('load', startApp);
 
         async function startApp() {
             try {
-                permissionStatus.textContent = "Revisando HTTPS...";
-                permissionStatus.className = "text-yellow-400 mt-4 h-6"; 
+                // 1. Obtener Ubicación (Automático)
+                loadingStatus.textContent = "Detectando tu ubicación (GPS/Red)...";
+                const position = await getGpsLocation();
+                currentPosition.lat = position.coords.latitude;
+                currentPosition.lon = position.coords.longitude;
                 
-                if (location.protocol !== 'https:') {
-                    permissionStatus.textContent = "Error: Esta app debe estar en HTTPS.";
-                    permissionStatus.className = "text-red-400 mt-4 h-6"; 
-                    return;
-                }
+                // 2. Obtener Nombre de la Ubicación (Geocodificación Inversa)
+                loadingStatus.textContent = "Identificando ubicación...";
+                const locName = await getReverseGeocode(currentPosition.lat, currentPosition.lon);
+                locationName.textContent = locName;
 
-                permissionStatus.textContent = "Solicitando permiso de movimiento...";
-                await requestMotionPermission();
-
-                permissionStatus.textContent = "Solicitando permiso de cámara...";
-                await startCamera();
-
-                // --- INICIO DE LA CORRECCIÓN v1.6 (Mensaje más claro) ---
-                permissionStatus.textContent = "Obteniendo ubicación (Red/Wi-Fi)...";
-                await getGpsLocation(); // Esta función ahora es mucho más rápida
-                // --- FIN DE LA CORRECCIÓN v1.6 ---
-
-                permissionStatus.textContent = "Iniciando brújula...";
-                startCompass();
+                // 3. Calcular Tiempos Solares
+                const sunTimes = SunCalc.getTimes(MOCK_DATE, currentPosition.lat, currentPosition.lon);
                 
-                permissionStatus.textContent = "Iniciando sensor de luz (opcional)...";
-                try {
-                    startAmbientLightSensor();
-                } catch (lightSensorError) {
-                    console.warn("Sensor de luz no disponible:", lightSensorError.message);
-                    luxDisplay.textContent = "No Soportado";
-                }
+                // 4. Poblar la UI
+                populateCalculatorUI(sunTimes);
+                buildTimeline(sunTimes);
 
-                permissionStatus.textContent = "¡Listo! Iniciando...";
-                permissionStatus.className = "text-green-400 mt-4 h-6"; 
-
-                setTimeout(() => {
-                    try {
-                        if (startScreen) {
-                            startScreen.style.display = 'none';
-                        } else {
-                            throw new Error('Elemento start-screen no encontrado.');
-                        }
-                        
-                        if (appScreen) {
-                            appScreen.classList.remove('hidden');
-                            appScreen.style.display = 'flex'; 
-                        } else {
-                            throw new Error('Elemento app-screen no encontrado.');
-                        }
-
-                    } catch (e) {
-                        permissionStatus.textContent = `Error al cambiar pantalla: ${e.message}`;
-                        permissionStatus.className = "text-red-400 mt-4 h-6";
-                        if (startScreen) startScreen.style.display = 'grid'; 
-                    }
-                }, 100); 
+                // 5. Mostrar la app
+                loadingScreen.style.display = 'none';
+                mainApp.classList.remove('hidden');
 
             } catch (err) {
-                // Errores de permisos (Cámara, GPS, Movimiento)
-                permissionStatus.textContent = `Error: ${err.message}`;
-                permissionStatus.className = "text-red-400 mt-4 h-6"; // Color de error
-                console.error(err);
+                // --- INICIO DE LA MODIFICACIÓN ---
+                let userMessage = "Ocurrió un error desconocido.";
+                
+                // 'err' puede ser un PositionError, que tiene una propiedad 'code'.
+                if (err && err.code) {
+                    switch (err.code) {
+                        case 1: // PERMISSION_DENIED
+                            userMessage = "Permiso de ubicación denegado. La app no puede funcionar.";
+                            break;
+                        case 2: // POSITION_UNAVAILABLE
+                            userMessage = "Ubicación no disponible. Revisa tu conexión.";
+                            break;
+                        case 3: // TIMEOUT
+                            userMessage = "El servicio de ubicación tardó demasiado en responder.";
+                            break;
+                        default:
+                            userMessage = "Error al obtener la ubicación.";
+                    }
+                } else if (err && err.message) {
+                    // Objeto de Error estándar
+                    userMessage = err.message;
+                }
+                
+                loadingStatus.textContent = `Error: ${userMessage}`;
+                loadingStatus.style.color = '#f87171'; // text-red-400
+                console.error("Error detallado en startApp:", err); // Loguear el objeto de error completo
+
+                // Mostrar UI de búsqueda manual
+                const manualSearchUI = document.getElementById('manual-search');
+                if (manualSearchUI) {
+                    manualSearchUI.classList.remove('hidden');
+                }
+                // --- FIN DE LA MODIFICACIÓN ---
             }
         }
 
-        // --- 2. Funciones de Permisos y Arranque ---
+        // --- 2. Funciones de Carga de Datos ---
+
+        function getGpsLocation() {
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: false, 
+                    timeout: 10000, 
+                    maximumAge: 60000
+                });
+            });
+        }
+        
+        async function getReverseGeocode(lat, lon) {
+            try {
+                // Usamos una API de geocodificación gratuita y sin clave (Nominatim)
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
+                const data = await response.json();
+                if (data.address) {
+                    return `${data.address.city || data.address.town || 'Ubicación'}, ${data.address.country}`;
+                }
+                return "Ubicación Detectada";
+            } catch (err) {
+                console.warn("Error de geocodificación, usando genérico:", err);
+                return "Ubicación Detectada";
+            }
+        }
+
+        // --- 3. Funciones de UI (Calculadora) ---
+
+        function populateCalculatorUI(times) {
+            // Fecha
+            currentDate.textContent = formatDate(MOCK_DATE);
+            
+            // Tarjetas de Información
+            document.getElementById('sunrise-time').textContent = formatTime(times.sunrise);
+            document.getElementById('sunrise-day').textContent = formatDay(times.sunrise);
+            
+            document.getElementById('sunset-time').textContent = formatTime(times.sunset);
+            document.getElementById('sunset-day').textContent = formatDay(times.sunset);
+            
+            document.getElementById('solar-noon-time').textContent = formatTime(times.solarNoon);
+
+            // Tiempos de Golden Hour
+            const ghMornStart = formatTime(times.goldenHourEnd); // Mañana
+            const ghMornEnd = formatTime(times.sunrise);
+            const ghEveStart = formatTime(times.sunset);
+            const ghEveEnd = formatTime(times.goldenHour); // Tarde
+            const ghMornDuration = Math.round((times.sunrise - times.goldenHourEnd) / 60000);
+            const ghEveDuration = Math.round((times.goldenHour - times.sunset) / 60000);
+
+            document.getElementById('gh-morn-time').textContent = `${ghMornStart} - ${ghMornEnd}`;
+            document.getElementById('gh-morn-duration').textContent = `${ghMornDuration} min`;
+            document.getElementById('gh-eve-time').textContent = `${ghEveStart} - ${ghEveEnd}`;
+            document.getElementById('gh-eve-duration').textContent = `${ghEveDuration} min`;
+            
+            // Tiempos de Blue Hour
+            const bhMornStart = formatTime(times.nauticalDawn);
+            const bhEveEnd = formatTime(times.nauticalDusk);
+            document.getElementById('bh-detail').textContent = `${bhMornStart} & ${bhEveEnd}`;
+        }
+        
+        function buildTimeline(times) {
+            // Convertir todo a minutos desde la medianoche
+            const toMin = (date) => date.getHours() * 60 + date.getMinutes();
+            
+            const nightStart = 0;
+            const blueHourMornStart = toMin(times.nauticalDawn);
+            const goldenHourMornStart = toMin(times.goldenHourEnd);
+            const dayStart = toMin(times.sunrise);
+            const dayEnd = toMin(times.sunset);
+            const goldenHourEveEnd = toMin(times.goldenHour);
+            const blueHourEveEnd = toMin(times.nauticalDusk);
+            const nightEnd = 24 * 60;
+
+            // Calcular duraciones
+            const periods = [
+                { name: 'Noche', duration: blueHourMornStart, color: '#0f172a', text: 'Noche' },
+                { name: 'Blue Hour Mañana', duration: goldenHourMornStart - blueHourMornStart, color: '#60a5fa', text: 'B...' },
+                { name: 'Golden Hour Mañana', duration: dayStart - goldenHourMornStart, color: '#fcd34d', text: 'G...' },
+                { name: 'Día', duration: dayEnd - dayStart, color: '#93c5fd', text: 'Día' },
+                { name: 'Golden Hour Tarde', duration: goldenHourEveEnd - dayEnd, color: '#fcd34d', text: 'G...' },
+                { name: 'Blue Hour Tarde', duration: blueHourEveEnd - goldenHourEveEnd, color: '#60a5fa', text: 'B...' },
+                { name: 'Noche', duration: nightEnd - blueHourEveEnd, color: '#0f172a', text: 'Noche' }
+            ];
+
+            const totalDuration = nightEnd; // 1440 minutos
+            
+            // Limpiar timeline
+            timeline.innerHTML = '';
+            
+            // Crear y añadir segmentos
+            periods.forEach(p => {
+                const percentage = (p.duration / totalDuration) * 100;
+                if (percentage < 3) return; // Omitir segmentos demasiado pequeños
+                
+                const segment = document.createElement('div');
+                segment.className = 'timeline-segment';
+                segment.style.width = `${percentage}%`;
+                segment.style.backgroundColor = p.color;
+                segment.style.color = (p.name === 'Día' || p.name === 'Golden Hour Tarde' || p.name === 'Golden Hour Mañana') ? '#1e293b' : '#e2e8f0';
+                segment.textContent = p.text;
+                segment.title = `${p.name} (${p.duration} min)`;
+                timeline.appendChild(segment);
+            });
+        }
+        
+        // --- 4. Funciones de Navegación y AR ---
+        
+        btnOpenAr.addEventListener('click', startArMode);
+        btnCloseAr.addEventListener('click', stopArMode);
+
+        async function startArMode() {
+            try {
+                // 1. Mostrar pantalla AR
+                calculatorScreen.classList.add('hidden');
+                arScreen.classList.remove('hidden');
+                
+                // 2. Pedir permiso y activar Cámara
+                debugInfo.textContent = "Activando cámara...";
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' }
+                });
+                cameraFeed.srcObject = stream;
+                cameraStream = stream; // Guardar referencia para detenerla
+                await cameraFeed.play();
+                
+                // 3. Pedir permiso y activar Brújula
+                debugInfo.textContent = "Activando brújula...";
+                await requestMotionPermission();
+                window.addEventListener('deviceorientation', handleOrientation);
+                
+            } catch (err) {
+                debugInfo.textContent = `Error AR: ${err.message}`;
+                setTimeout(stopArMode, 2000); // Volver si hay error
+            }
+        }
+        
+        function stopArMode() {
+            // 1. Detener Cámara
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            
+            // 2. Detener Brújula
+            window.removeEventListener('deviceorientation', handleOrientation);
+            
+            // 3. Cambiar pantallas
+            arScreen.classList.add('hidden');
+            calculatorScreen.classList.remove('hidden');
+        }
 
         function requestMotionPermission() {
             return new Promise((resolve, reject) => {
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     // iOS 13+
                     DeviceOrientationEvent.requestPermission()
-                        .then(state => {
-                            if (state === 'granted') {
-                                resolve();
-                            } else {
-                                reject(new Error('Permiso de movimiento denegado.'));
-                            }
-                        })
+                        .then(state => (state === 'granted') ? resolve() : reject(new Error('Permiso de movimiento denegado.')))
                         .catch(reject);
                 } else {
-                    // Android (no se requiere permiso explícito)
+                    // Android
                     resolve();
                 }
             });
         }
 
-        async function startCamera() {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'environment' } // Pedir cámara trasera
-            });
-            cameraFeed.srcObject = stream;
-            await cameraFeed.play();
-        }
-
-        // --- INICIO DE LA CORRECCIÓN v1.6 (Arreglo de GPS) ---
-        function getGpsLocation() {
-            return new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        // Éxito
-                        currentPosition.lat = position.coords.latitude;
-                        currentPosition.lon = position.coords.longitude;
-                        calculateSunTimes();
-                        resolve();
-                    },
-                    (error) => {
-                        // Error
-                        reject(new Error(`Error de GPS: ${error.message}`));
-                    },
-                    {
-                        // Pedir ubicación RÁPIDA (Wi-Fi/Red), no GPS (satélites)
-                        enableHighAccuracy: false, 
-                        timeout: 20000, // 20 segundos de tiempo límite
-                        maximumAge: 60000 // Aceptar una ubicación de hace 1 min
-                    }
-                );
-            });
-        }
-        // --- FIN DE LA CORRECCIÓN v1.6 ---
-
-        function startAmbientLightSensor() {
-            if ('AmbientLightSensor' in window) {
-                const sensor = new AmbientLightSensor({ frequency: 1 }); // 1 lectura por seg
-                sensor.onreading = () => {
-                    luxDisplay.textContent = `${sensor.illuminance.toFixed(0)} Lux`;
-                };
-                sensor.onerror = (event) => {
-                    console.error('Error de Sensor de Luz:', event.error.message);
-                    luxDisplay.textContent = 'No Soportado';
-                };
-                sensor.start();
-            } else {
-                luxDisplay.textContent = 'No Soportado';
-            }
-        }
-
-        function startCompass() {
-            if ('DeviceOrientationEvent' in window) {
-                 window.addEventListener('deviceorientation', handleOrientation);
-                 if (debugInfo) debugInfo.textContent = "Sensor 'deviceorientation' activado.";
-            } else {
-                if (debugInfo) debugInfo.textContent = "Error: Brújula no soportada.";
-            }
-        }
-
-        // --- 3. Funciones de Lógica y UI ---
-
-        function calculateSunTimes() {
-            const times = SunCalc.getTimes(new Date(), currentPosition.lat, currentPosition.lon);
-            const formatTime = (date) => date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-            sunCalcData.goldenHourStart = times.goldenHour;
-            sunCalcData.sunset = times.sunset;
-            goldenHourDisplay.textContent = formatTime(times.goldenHour);
-            sunsetDisplay.textContent = formatTime(times.sunset);
-        }
-
+        // La función de la brújula, ahora usa 'currentPosition'
         function handleOrientation(event) {
             let deviceAlpha = event.alpha || event.webkitCompassHeading;
+            if (deviceAlpha === null) return;
             
-            if (deviceAlpha === null || deviceAlpha === undefined) {
-                if (debugInfo) debugInfo.textContent = "Brújula activada, pero 'alpha' es nulo.";
-                return;
-            };
-            
-            const now = new Date();
+            const now = MOCK_DATE; // Usar la misma fecha para consistencia
             const sunPos = SunCalc.getPosition(now, currentPosition.lat, currentPosition.lon);
             
             let sunAzimuthDeg = (sunPos.azimuth * 180 / Math.PI) + 180;
             if (sunAzimuthDeg >= 360) sunAzimuthDeg -= 360;
-
             let sunAltitudeDeg = sunPos.altitude * 180 / Math.PI;
 
             // 1. Posición Horizontal (X)
@@ -388,10 +572,9 @@
             // Aplicar estilos al marcador del sol
             sunMarker.style.left = '50%';
             sunMarker.style.transform = `translateX(${horizontalPosition})`;
-            sunMarker.style.bottom = `calc(${verticalPosition}% - 30px)`; // -30px para centrar el icono
+            sunMarker.style.bottom = `calc(${verticalPosition}% - 30px)`;
 
-            // Mostrar info de depuración
-            if (debugInfo) debugInfo.textContent = `Brújula: ${deviceAlpha.toFixed(1)}° | Azimut Sol: ${sunAzimuthDeg.toFixed(1)}° | Altitud Sol: ${sunAltitudeDeg.toFixed(1)}°`;
+            debugInfo.textContent = `Brújula: ${deviceAlpha.toFixed(1)}° | Azimut Sol: ${sunAzimuthDeg.toFixed(1)}°`;
         }
 
     </script>
