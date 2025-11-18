@@ -140,7 +140,7 @@
             <button id="start-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 text-xl">
                 Activar Sensores
             </button>
-            <p id="permission-status" class="text-red-400 mt-4 h-6"></p>
+            <p id="permission-status" class="text-gray-400 mt-4 h-6"></p>
         </div>
     </div>
 
@@ -200,30 +200,26 @@
         async function startApp() {
             try {
                 permissionStatus.textContent = "Revisando HTTPS...";
+                permissionStatus.className = "text-yellow-400 mt-4 h-6"; // Color de progreso
                 
-                // Corrección v1.1: El protocolo es 'https:' (con dos puntos)
                 if (location.protocol !== 'https:') {
                     permissionStatus.textContent = "Error: Esta app debe estar en HTTPS.";
+                    permissionStatus.className = "text-red-400 mt-4 h-6"; // Color de error
                     return;
                 }
 
-                // --- A. Permisos de Sensores (Especial para iOS) ---
                 permissionStatus.textContent = "Solicitando permiso de movimiento...";
                 await requestMotionPermission();
 
-                // --- B. Iniciar Cámara ---
                 permissionStatus.textContent = "Solicitando permiso de cámara...";
                 await startCamera();
 
-                // --- C. Iniciar GPS ---
                 permissionStatus.textContent = "Obteniendo ubicación GPS...";
-                await getGpsLocation(); // Esto calculará las horas
+                await getGpsLocation(); 
 
-                // --- D. Iniciar Brújula (Crítico) ---
                 permissionStatus.textContent = "Iniciando brújula...";
                 startCompass();
                 
-                // --- E. Iniciar Sensor de Luz (Opcional) ---
                 permissionStatus.textContent = "Iniciando sensor de luz (opcional)...";
                 try {
                     startAmbientLightSensor();
@@ -231,17 +227,25 @@
                     console.warn("Sensor de luz no disponible:", lightSensorError.message);
                     luxDisplay.textContent = "No Soportado";
                 }
-                // --- FIN DE LA CORRECCIÓN v1.2 ---
 
 
-                // --- F. Iniciar App ---
+                // --- INICIO DE LA CORRECCIÓN v1.4 ---
+                // Cambiamos el texto a "¡Listo!" y lo ponemos en VERDE
                 permissionStatus.textContent = "¡Listo!";
-                startScreen.classList.add('hidden');
-                appScreen.classList.remove('hidden');
+                permissionStatus.className = "text-green-400 mt-4 h-6"; // Color de éxito
+
+                // Usamos un setTimeout para darle tiempo al navegador
+                // a procesar los permisos antes de cambiar la pantalla.
+                setTimeout(() => {
+                    startScreen.classList.add('hidden');
+                    appScreen.classList.remove('hidden');
+                }, 100); // 100ms de retraso
+                // --- FIN DE LA CORRECCIÓN v1.4 ---
 
             } catch (err) {
                 // Errores de permisos (Cámara, GPS, Movimiento)
                 permissionStatus.textContent = `Error: ${err.message}`;
+                permissionStatus.className = "text-red-400 mt-4 h-6"; // Color de error
                 console.error(err);
             }
         }
@@ -296,8 +300,6 @@
         }
 
         function startAmbientLightSensor() {
-            // Esta función PUEDE fallar si el navegador o teléfono no la soporta.
-            // Por eso está en un try/catch en la función startApp()
             if ('AmbientLightSensor' in window) {
                 const sensor = new AmbientLightSensor({ frequency: 1 }); // 1 lectura por seg
                 sensor.onreading = () => {
@@ -313,10 +315,8 @@
             }
         }
 
-        // --- INICIO DE LA CORRECCIÓN v1.3 ---
         function startCompass() {
-            // Simplificado para usar 'deviceorientation', que sabemos que funciona
-            // gracias a test.html.
+            // (v1.3) Usar 'deviceorientation' simple, que sabemos que funciona.
             if ('DeviceOrientationEvent' in window) {
                  window.addEventListener('deviceorientation', handleOrientation);
                  debugInfo.textContent = "Sensor 'deviceorientation' activado.";
@@ -324,70 +324,46 @@
                 debugInfo.textContent = "Error: Brújula no soportada.";
             }
         }
-        // --- FIN DE LA CORRECCIÓN v1.3 ---
 
         // --- 3. Funciones de Lógica y UI ---
 
         function calculateSunTimes() {
             const times = SunCalc.getTimes(new Date(), currentPosition.lat, currentPosition.lon);
-            
-            // Formatear horas
             const formatTime = (date) => date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-
-            sunCalcData.goldenHourStart = times.goldenHour; // Tarde
+            sunCalcData.goldenHourStart = times.goldenHour;
             sunCalcData.sunset = times.sunset;
-
             goldenHourDisplay.textContent = formatTime(times.goldenHour);
             sunsetDisplay.textContent = formatTime(times.sunset);
         }
 
-        // --- INICIO DE LA CORRECCIÓN v1.3 ---
         function handleOrientation(event) {
-            // 'event.alpha' es la brújula (0-360, 0=Norte)
-            // 'event.webkitCompassHeading' es una alternativa para navegadores antiguos
             let deviceAlpha = event.alpha || event.webkitCompassHeading;
-            // --- FIN DE LA CORRECCIÓN v1.3 ---
             
             if (deviceAlpha === null || deviceAlpha === undefined) {
                 debugInfo.textContent = "Brújula activada, pero 'alpha' es nulo.";
                 return;
             };
             
-            // Calcular posición actual del sol
             const now = new Date();
             const sunPos = SunCalc.getPosition(now, currentPosition.lat, currentPosition.lon);
             
-            // sunPos.azimuth: 0 = Sur, -PI/2 = Este, PI/2 = Oeste
-            // Convertir a grados de 0-360 (0=Norte)
             let sunAzimuthDeg = (sunPos.azimuth * 180 / Math.PI) + 180;
             if (sunAzimuthDeg >= 360) sunAzimuthDeg -= 360;
 
-            // sunPos.altitude: 0 = horizonte, PI/2 = cenit
             let sunAltitudeDeg = sunPos.altitude * 180 / Math.PI;
 
-            // --- Lógica de AR ---
-
             // 1. Posición Horizontal (X)
-            // Diferencia angular entre dónde apunta el teléfono y dónde está el sol
             let delta = sunAzimuthDeg - deviceAlpha;
-
-            // Manejar "wrap-around" (ej. 350° vs 10° -> delta debe ser 20°, no -340°)
             if (delta > 180) { delta -= 360; }
             if (delta < -180) { delta += 360; }
-            
-            // Mapear grados a píxeles. (ej. 10 píxeles por grado)
-            // 'calc(-50% ...)' es para centrar el icono antes de moverlo
             const horizontalPosition = `calc(-50% + ${delta * 10}px)`;
 
             // 2. Posición Vertical (Y)
-            // Mapear altitud (0-90°) a un porcentaje de la pantalla (ej. 0-90%)
             const verticalPosition = (sunAltitudeDeg / 90) * 100;
             
             // Aplicar estilos al marcador del sol
-            // Usamos left: 50% y transform para centrar horizontalmente
             sunMarker.style.left = '50%';
             sunMarker.style.transform = `translateX(${horizontalPosition})`;
-            // Usamos bottom para la altitud (0% = horizonte, 90% = casi arriba)
             sunMarker.style.bottom = `calc(${verticalPosition}% - 30px)`; // -30px para centrar el icono
 
             // Mostrar info de depuración
