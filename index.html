@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente de Hora Dorada</title>
+    <title>Golden Hour Cam v2.0</title>
     <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Carga de SunCalc.js (para calcular la posición del sol) -->
@@ -21,121 +21,127 @@
             height: 100vh;
             width: 100vw;
         }
-
-        /* Contenedor principal de la app */
-        #app-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+        
+        .screen {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
             overflow: hidden;
         }
+        .hidden { display: none; }
 
-        /* Feed de la cámara en vivo (fondo) */
+        /* Pantalla 2: Cámara */
         #camera-feed {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: auto;
-            height: auto;
-            min-width: 100%;
-            min-height: 100%;
+            position: absolute; top: 50%; left: 50%;
+            width: auto; height: auto;
+            min-width: 100%; min-height: 100%;
             transform: translate(-50%, -50%);
             z-index: 10;
         }
-
-        /* Capa de Realidad Aumentada (AR) */
         #ar-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 20;
-            overflow: hidden; /* Clave para que el sol desaparezca por los lados */
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 20; overflow: hidden;
         }
         
-        /* Marcador del Sol (El círculo) */
         #sun-marker {
-            width: 60px;
-            height: 60px;
-            background-color: rgba(251, 191, 36, 0.7); /* yellow-400 con transparencia */
+            width: 60px; height: 60px;
+            background-color: rgba(251, 191, 36, 0.7); /* yellow-400 */
             border: 4px solid rgba(255, 255, 255, 0.8);
             border-radius: 50%;
             position: absolute;
-            z-index: 30;
-            font-size: 30px;
-            display: grid;
-            place-items: center;
-            /* Transición suave para la altitud */
-            transition: bottom 0.5s linear;
-            /* El transform (horizontal) se aplica con JS */
+            z-index: 30; font-size: 30px;
+            display: grid; place-items: center;
+            transition: bottom 0.5s linear, box-shadow 0.3s ease;
+        }
+        /* NUEVO: Efecto Neón (Glow) */
+        #sun-marker.glow {
+            box-shadow: 0 0 20px 10px rgba(251, 191, 36, 0.8), 0 0 40px 20px rgba(255, 107, 0, 0.5);
+            background-color: rgba(251, 191, 36, 1);
         }
 
-        /* Panel de Estadísticas (Abajo) */
         #stats-bar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
+            position: absolute; top: 0; left: 0;
             width: 100%;
-            background-color: rgba(17, 24, 39, 0.8); /* bg-gray-900 con 80% opacidad */
-            padding: 1rem;
+            background-color: rgba(17, 24, 39, 0.8); /* bg-gray-900 */
+            padding: 0.75rem 1rem;
             z-index: 40;
             backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(55, 65, 81, 0.5);
+            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+            display: flex; gap: 0.5rem; justify-content: space-around;
         }
-        
-        .stat-item {
-            flex: 1;
-            text-align: center;
+        .stat-item { flex: 1; text-align: center; }
+        .stat-title { font-size: 0.7rem; font-weight: 500; color: #9ca3af; text-transform: uppercase; }
+        .stat-value { font-size: 1rem; font-weight: 700; color: #ffffff; }
+
+        #camera-controls {
+            position: absolute; bottom: 0; left: 0;
+            width: 100%;
+            z-index: 40;
+            padding: 1.5rem;
+            display: grid;
+            place-items: center;
         }
-        .stat-title {
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: #9ca3af; /* text-gray-400 */
-            text-transform: uppercase;
+        #shutter-button {
+            width: 70px; height: 70px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            border: 4px solid rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0,0,0,0.4);
+            transition: transform 0.1s ease;
         }
-        .stat-value {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #ffffff;
-            line-height: 1.2;
+        #shutter-button:active {
+            transform: scale(0.9);
         }
 
-        /* Pantalla de Inicio (Permisos) */
-        #start-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
+        /* Pantalla 3: Vista Previa */
+        #preview-screen {
+            background-color: #000;
+            z-index: 200;
+            display: grid;
+            grid-template-rows: 1fr auto;
+        }
+        #photo-preview {
             width: 100%;
             height: 100%;
-            z-index: 100;
+            object-fit: contain; /* Mostrar la foto entera */
+        }
+        #preview-controls {
+            display: flex;
+            justify-content: space-around;
+            padding: 1.5rem;
+            background-color: rgba(17, 24, 39, 0.8);
+        }
+        .control-button {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Pantalla 1: Inicio */
+        #start-screen {
+            z-index: 300;
             background-color: #111827;
             display: grid;
             place-items: center;
             text-align: center;
             padding: 1rem;
         }
-        
-        .hidden {
-            display: none;
-        }
     </style>
 </head>
 <body>
 
     <!-- PANTALLA 1: INICIO Y PERMISOS -->
-    <div id="start-screen">
+    <div id="start-screen" class="screen">
         <div class="max-w-md">
-            <h1 class="text-3xl font-bold text-white mb-4">Asistente de Hora Dorada</h1>
-            <p class="text-gray-300 mb-6">
-                Esta app necesita acceso a tu Cámara, Ubicación y Sensores de Movimiento para funcionar.
-            </p>
-            <!-- ADVERTENCIA HTTPS -->
+            <h1 class="text-3xl font-bold text-white mb-4">Golden Hour Cam v2.0</h1>
+            <p class="text-gray-300 mb-6">Esta app necesita acceso a tu Cámara, Ubicación y Sensores de Movimiento para funcionar.</p>
             <div class="bg-yellow-800 border-l-4 border-yellow-300 text-yellow-100 p-4 rounded-lg shadow-lg mb-6">
                 <strong class="font-bold">¡IMPORTANTE!</strong>
-                <p>Esta app debe ejecutarse en un servidor seguro (HTTPS). No funcionará como un archivo local.</p>
+                <p>Esta app debe ejecutarse en un servidor seguro (HTTPS).</p>
             </div>
             <button id="start-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 text-xl">
                 Activar Sensores
@@ -144,36 +150,47 @@
         </div>
     </div>
 
-    <!-- PANTALLA 2: APLICACIÓN PRINCIPAL -->
-    <div id="app-screen" class="hidden">
-        <!-- Fondo de Cámara -->
-        <video id="camera-feed" playsinline autoplay muted loop></video>
-
-        <!-- Capa de AR -->
+    <!-- PANTALLA 2: APLICACIÓN PRINCIPAL (Cámara) -->
+    <div id="camera-screen" class="screen hidden">
+        <video id="camera-feed" playsinline autoplay muted></video>
+        
         <div id="ar-overlay">
             <div id="sun-marker">☀️</div>
         </div>
 
-        <!-- Panel de Estadísticas -->
         <div id="stats-bar">
-            <div class="flex gap-2">
-                <div class="stat-item">
-                    <div class="stat-title">Luz Actual</div>
-                    <div id="lux-display" class="stat-value text-yellow-400">--- Lux</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-title">Hora Dorada</div>
-                    <div id="golden-hour-display" class="stat-value text-orange-400">--:--</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-title">Atardecer</div>
-                    <div id="sunset-display" class="stat-value text-red-400">--:--</div>
-                </div>
+            <div class="stat-item">
+                <div class="stat-title">Luz</div>
+                <div id="lux-display" class="stat-value text-yellow-400">--- Lux</div>
             </div>
-            <!-- Div de depuración (opcional) -->
-            <div id="debug-info" class="text-xs text-gray-600 mt-2 text-center"></div>
+            <div class="stat-item">
+                <div class="stat-title">H. Dorada</div>
+                <div id="golden-hour-display" class="stat-value text-orange-400">--:--</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-title">Atardecer</div>
+                <div id="sunset-display" class="stat-value text-red-400">--:--</div>
+            </div>
+        </div>
+        
+        <div id="camera-controls">
+            <button id="shutter-button" title="Tomar Foto"></button>
+        </div>
+
+        <div id="debug-info" class="text-xs text-white bg-black bg-opacity-50 p-1 fixed top-1/2 left-0 z-50"></div>
+    </div>
+
+    <!-- PANTALLA 3: VISTA PREVIA (Oculta) -->
+    <div id="preview-screen" class="screen hidden">
+        <img id="photo-preview" src="" alt="Vista previa de la foto">
+        <div id="preview-controls">
+            <button id="btn-back-to-cam" class="control-button bg-gray-600">Volver</button>
+            <a id="btn-download-photo" href="#" download="golden-hour-shot.jpg" class="control-button">Descargar</a>
         </div>
     </div>
+
+    <!-- Canvas oculto para tomar la foto -->
+    <canvas id="snapshot-canvas" class="hidden"></canvas>
 
     <script>
         // --- Referencias DOM ---
@@ -181,7 +198,7 @@
         const startButton = document.getElementById('start-button');
         const permissionStatus = document.getElementById('permission-status');
         
-        const appScreen = document.getElementById('app-screen');
+        const appScreen = document.getElementById('camera-screen');
         const cameraFeed = document.getElementById('camera-feed');
         const sunMarker = document.getElementById('sun-marker');
         
@@ -189,6 +206,14 @@
         const goldenHourDisplay = document.getElementById('golden-hour-display');
         const sunsetDisplay = document.getElementById('sunset-display');
         const debugInfo = document.getElementById('debug-info');
+
+        const shutterButton = document.getElementById('shutter-button');
+        const snapshotCanvas = document.getElementById('snapshot-canvas');
+        
+        const previewScreen = document.getElementById('preview-screen');
+        const photoPreview = document.getElementById('photo-preview');
+        const btnBackToCam = document.getElementById('btn-back-to-cam');
+        const btnDownloadPhoto = document.getElementById('btn-download-photo');
 
         // --- Estado Global ---
         let currentPosition = { lat: 0, lon: 0 };
@@ -200,81 +225,65 @@
         async function startApp() {
             try {
                 permissionStatus.textContent = "Revisando HTTPS...";
-                permissionStatus.className = "text-yellow-400 mt-4 h-6"; // Color de progreso
+                permissionStatus.className = "text-yellow-400 mt-4 h-6";
                 
                 if (location.protocol !== 'https:') {
                     permissionStatus.textContent = "Error: Esta app debe estar en HTTPS.";
-                    permissionStatus.className = "text-red-400 mt-4 h-6"; // Color de error
+                    permissionStatus.className = "text-red-400 mt-4 h-6";
                     return;
                 }
 
-                permissionStatus.textContent = "Solicitando permiso de movimiento...";
+                permissionStatus.textContent = "Permiso de movimiento...";
                 await requestMotionPermission();
 
-                permissionStatus.textContent = "Solicitando permiso de cámara...";
+                permissionStatus.textContent = "Permiso de cámara...";
                 await startCamera();
 
-                permissionStatus.textContent = "Obteniendo ubicación GPS...";
+                permissionStatus.textContent = "Obteniendo GPS...";
                 await getGpsLocation(); 
 
                 permissionStatus.textContent = "Iniciando brújula...";
                 startCompass();
                 
-                permissionStatus.textContent = "Iniciando sensor de luz (opcional)...";
+                permissionStatus.textContent = "Iniciando sensor de luz...";
                 try {
                     startAmbientLightSensor();
                 } catch (lightSensorError) {
                     console.warn("Sensor de luz no disponible:", lightSensorError.message);
-                    luxDisplay.textContent = "No Soportado";
+                    luxDisplay.textContent = "N/A";
                 }
 
-
-                // --- INICIO DE LA CORRECCIÓN v1.4 ---
-                // Cambiamos el texto a "¡Listo!" y lo ponemos en VERDE
                 permissionStatus.textContent = "¡Listo!";
-                permissionStatus.className = "text-green-400 mt-4 h-6"; // Color de éxito
+                permissionStatus.className = "text-green-400 mt-4 h-6";
 
-                // Usamos un setTimeout para darle tiempo al navegador
-                // a procesar los permisos antes de cambiar la pantalla.
                 setTimeout(() => {
                     startScreen.classList.add('hidden');
                     appScreen.classList.remove('hidden');
-                }, 100); // 100ms de retraso
-                // --- FIN DE LA CORRECCIÓN v1.4 ---
+                }, 100); 
 
             } catch (err) {
-                // Errores de permisos (Cámara, GPS, Movimiento)
                 permissionStatus.textContent = `Error: ${err.message}`;
-                permissionStatus.className = "text-red-400 mt-4 h-6"; // Color de error
+                permissionStatus.className = "text-red-400 mt-4 h-6";
                 console.error(err);
             }
         }
 
         // --- 2. Funciones de Permisos y Arranque ---
-
         function requestMotionPermission() {
             return new Promise((resolve, reject) => {
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    // iOS 13+
                     DeviceOrientationEvent.requestPermission()
-                        .then(state => {
-                            if (state === 'granted') {
-                                resolve();
-                            } else {
-                                reject(new Error('Permiso de movimiento denegado.'));
-                            }
-                        })
+                        .then(state => (state === 'granted') ? resolve() : reject(new Error('Permiso de movimiento denegado.')))
                         .catch(reject);
                 } else {
-                    // Android (no se requiere permiso explícito)
-                    resolve();
+                    resolve(); // Android no requiere permiso explícito
                 }
             });
         }
 
         async function startCamera() {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'environment' } // Pedir cámara trasera
+                video: { facingMode: 'environment' } 
             });
             cameraFeed.srcObject = stream;
             await cameraFeed.play();
@@ -286,14 +295,10 @@
                     (position) => {
                         currentPosition.lat = position.coords.latitude;
                         currentPosition.lon = position.coords.longitude;
-                        
-                        // Calcular horas del sol
                         calculateSunTimes();
                         resolve();
                     },
-                    (error) => {
-                        reject(new Error(`Error de GPS: ${error.message}`));
-                    },
+                    (error) => reject(new Error(`Error de GPS: ${error.message}`)),
                     { enableHighAccuracy: true }
                 );
             });
@@ -301,22 +306,21 @@
 
         function startAmbientLightSensor() {
             if ('AmbientLightSensor' in window) {
-                const sensor = new AmbientLightSensor({ frequency: 1 }); // 1 lectura por seg
+                const sensor = new AmbientLightSensor({ frequency: 1 });
                 sensor.onreading = () => {
                     luxDisplay.textContent = `${sensor.illuminance.toFixed(0)} Lux`;
                 };
                 sensor.onerror = (event) => {
                     console.error('Error de Sensor de Luz:', event.error.message);
-                    luxDisplay.textContent = 'No Soportado';
+                    luxDisplay.textContent = 'N/A';
                 };
                 sensor.start();
             } else {
-                luxDisplay.textContent = 'No Soportado';
+                luxDisplay.textContent = 'N/A';
             }
         }
 
         function startCompass() {
-            // (v1.3) Usar 'deviceorientation' simple, que sabemos que funciona.
             if ('DeviceOrientationEvent' in window) {
                  window.addEventListener('deviceorientation', handleOrientation);
                  debugInfo.textContent = "Sensor 'deviceorientation' activado.";
@@ -326,7 +330,6 @@
         }
 
         // --- 3. Funciones de Lógica y UI ---
-
         function calculateSunTimes() {
             const times = SunCalc.getTimes(new Date(), currentPosition.lat, currentPosition.lon);
             const formatTime = (date) => date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -338,36 +341,67 @@
 
         function handleOrientation(event) {
             let deviceAlpha = event.alpha || event.webkitCompassHeading;
-            
-            if (deviceAlpha === null || deviceAlpha === undefined) {
-                debugInfo.textContent = "Brújula activada, pero 'alpha' es nulo.";
-                return;
-            };
+            if (deviceAlpha === null || deviceAlpha === undefined) return;
             
             const now = new Date();
             const sunPos = SunCalc.getPosition(now, currentPosition.lat, currentPosition.lon);
             
             let sunAzimuthDeg = (sunPos.azimuth * 180 / Math.PI) + 180;
             if (sunAzimuthDeg >= 360) sunAzimuthDeg -= 360;
-
             let sunAltitudeDeg = sunPos.altitude * 180 / Math.PI;
 
-            // 1. Posición Horizontal (X)
+            // --- Lógica de AR ---
             let delta = sunAzimuthDeg - deviceAlpha;
             if (delta > 180) { delta -= 360; }
             if (delta < -180) { delta += 360; }
             const horizontalPosition = `calc(-50% + ${delta * 10}px)`;
-
-            // 2. Posición Vertical (Y)
             const verticalPosition = (sunAltitudeDeg / 90) * 100;
             
-            // Aplicar estilos al marcador del sol
             sunMarker.style.left = '50%';
             sunMarker.style.transform = `translateX(${horizontalPosition})`;
-            sunMarker.style.bottom = `calc(${verticalPosition}% - 30px)`; // -30px para centrar el icono
+            sunMarker.style.bottom = `calc(${verticalPosition}% - 30px)`;
 
-            // Mostrar info de depuración
-            debugInfo.textContent = `Brújula: ${deviceAlpha.toFixed(1)}° | Azimut Sol: ${sunAzimuthDeg.toFixed(1)}° | Altitud Sol: ${sunAltitudeDeg.toFixed(1)}°`;
+            // --- Lógica de Neón (Tu idea) ---
+            // Si el sol está a 5 grados del centro
+            if (Math.abs(delta) < 5) {
+                sunMarker.classList.add('glow');
+            } else {
+                sunMarker.classList.remove('glow');
+            }
+
+            debugInfo.textContent = `Brújula: ${deviceAlpha.toFixed(1)}° | Az Sol: ${sunAzimuthDeg.toFixed(1)}° | Alt Sol: ${sunAltitudeDeg.toFixed(1)}°`;
+        }
+        
+        // --- 4. NUEVO: Funciones de Cámara ---
+        
+        shutterButton.addEventListener('click', takePhoto);
+        btnBackToCam.addEventListener('click', showCamera);
+
+        function takePhoto() {
+            const context = snapshotCanvas.getContext('2d');
+            
+            // Sincronizar tamaño del canvas con el video
+            snapshotCanvas.width = cameraFeed.videoWidth;
+            snapshotCanvas.height = cameraFeed.videoHeight;
+            
+            // Dibujar el frame actual del video en el canvas
+            context.drawImage(cameraFeed, 0, 0, cameraFeed.videoWidth, cameraFeed.videoHeight);
+            
+            // Convertir el canvas a una imagen JPG
+            const dataUrl = snapshotCanvas.toDataURL('image/jpeg');
+            
+            // Mostrar en la pantalla de vista previa
+            photoPreview.src = dataUrl;
+            btnDownloadPhoto.href = dataUrl; // Preparar enlace de descarga
+            
+            // Cambiar de pantalla
+            appScreen.classList.add('hidden');
+            previewScreen.classList.remove('hidden');
+        }
+        
+        function showCamera() {
+            previewScreen.classList.add('hidden');
+            appScreen.classList.remove('hidden');
         }
 
     </script>
